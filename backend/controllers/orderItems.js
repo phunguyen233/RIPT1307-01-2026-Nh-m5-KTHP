@@ -2,12 +2,15 @@ const db = require('../config/db');
 
 exports.getAllOrderItems = async (req, res, next) => {
   try {
+    const shop_id = req.user.shop_id;
     const result = await db.query(
       `SELECT oi.*, p.name AS product_name, o.customer_id AS order_customer_id
        FROM order_items oi
        LEFT JOIN products p ON oi.product_id = p.id
        LEFT JOIN orders o ON oi.order_id = o.id
-       ORDER BY oi.id`
+       WHERE o.shop_id = $1
+       ORDER BY oi.id`,
+      [shop_id]
     );
     res.json(result.rows);
   } catch (error) {

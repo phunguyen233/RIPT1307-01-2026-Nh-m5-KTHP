@@ -35,7 +35,7 @@ export const orderAPI = {
     const res = await axiosClient.get(`${endpoint}/${id}`);
     return res.data;
   },
-  create: async (payload: { customer_id: number; shipping_address: string; total_price: number; status?: string; order_items: { product_id: number; quantity: number; price: number }[] }) => {
+  create: async (payload: { customer_id: number | null; shipping_address: string; total_price: number; status?: string; order_items: { product_id: number; quantity: number; price: number }[] }) => {
     const res = await axiosClient.post(endpoint, payload);
     return res.data;
   },

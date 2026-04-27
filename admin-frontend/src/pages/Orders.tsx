@@ -179,24 +179,12 @@ const Orders = () => {
     };
 
     const handleAddOrderSubmit = async (values: any) => {
-        if (!selectedCustomer) {
-            message.error("Vui lòng chọn khách hàng");
-            return;
-        }
         if (orderItems.length === 0) {
             message.error("Vui lòng thêm ít nhất một sản phẩm");
             return;
         }
-        if (!recipientPhone.trim()) {
-            message.error("Vui lòng nhập số điện thoại");
-            return;
-        }
         if (!recipientAddress.trim()) {
             message.error("Vui lòng nhập địa chỉ giao");
-            return;
-        }
-        if (!deliveryTime) {
-            message.error("Vui lòng chọn thời gian giao");
             return;
         }
 
@@ -204,7 +192,7 @@ const Orders = () => {
             const totalPrice = orderItems.reduce((total, item) => total + (item.so_luong * item.don_gia), 0);
 
             const orderData = {
-                customer_id: selectedCustomer,
+                customer_id: selectedCustomer || null,
                 shipping_address: recipientAddress,
                 total_price: totalPrice,
                 status: 'pending',
@@ -218,10 +206,16 @@ const Orders = () => {
             await orderAPI.create(orderData);
             message.success("Tạo đơn hàng thành công!");
             setShowAddModal(false);
+            // Reset form
+            setSelectedCustomer(undefined);
+            setRecipientPhone("");
+            setRecipientAddress("");
+            setOrderItems([]);
             fetchOrders();
-        } catch (error) {
+        } catch (error: any) {
             console.error("Lỗi khi tạo đơn hàng:", error);
-            message.error("Lỗi khi tạo đơn hàng!");
+            const errorMsg = error?.response?.data?.error || error?.message || 'Lỗi khi tạo đơn hàng!';
+            message.error(errorMsg);
         }
     };
 
@@ -467,6 +461,9 @@ const Orders = () => {
                                         }}
                                         style={{ width: '150px' }}
                                     >
+                                        <Select.Option key="pending" value="pending">
+                                            Đang chờ
+                                        </Select.Option>
                                         <Select.Option key="completed" value="completed">
                                             Hoàn thành
                                         </Select.Option>
@@ -485,12 +482,9 @@ const Orders = () => {
                                 columns={[
                                     {
                                         title: 'Tên sản phẩm',
-                                        dataIndex: 'product_id',
+                                        dataIndex: 'product_name',
                                         key: 'product_name',
-                                        render: (productId: number) => {
-                                            const product = products.find(p => p.id === productId);
-                                            return product ? product.name : 'N/A';
-                                        }
+                                        render: (name: string, record: any) => name || `Sản phẩm #${record.product_id}`
                                     },
                                     {
                                         title: 'Số lượng',
@@ -534,7 +528,6 @@ const Orders = () => {
                     <Form.Item
                         label="Chọn khách hàng"
                         name="customer_id"
-                        rules={[{ required: true, message: 'Vui lòng chọn khách hàng' }]}
                     >
                         <Select
                             value={selectedCustomer}
@@ -546,7 +539,8 @@ const Orders = () => {
                                     setRecipientPhone(customer.phone || "");
                                 }
                             }}
-                            placeholder="Chọn khách hàng"
+                            placeholder="Chọn khách hàng (không bắt buộc)"
+                            allowClear
                         >
                             {customers.map((customer) => (
                                 <Select.Option key={customer.id} value={customer.id}>
@@ -559,7 +553,6 @@ const Orders = () => {
                     <Form.Item
                         label="Số điện thoại khách"
                         name="phone"
-                        rules={[{ required: true, message: 'Vui lòng nhập số điện thoại' }]}
                     >
                         <Input
                             value={recipientPhone}
@@ -571,7 +564,6 @@ const Orders = () => {
                     <Form.Item
                         label="Thời gian giao"
                         name="delivery_time"
-                        rules={[{ required: true, message: 'Vui lòng chọn thời gian giao' }]}
                     >
                         <DatePicker
                             showTime
@@ -579,6 +571,7 @@ const Orders = () => {
                             value={deliveryTime ? dayjs(deliveryTime) : null}
                             onChange={(date, dateString) => setDeliveryTime(dateString)}
                             placeholder="Chọn thời gian giao"
+                            style={{ width: '100%' }}
                         />
                     </Form.Item>
 
