@@ -81,9 +81,58 @@ exports.verifyApiKey = (req, res, next) => {
       }
 
       req.shop = result.rows[0];
+      req.user = {
+        shop_id: result.rows[0].id,
+        role: 'shop'
+      };
       next();
     });
   } catch (error) {
     return res.status(401).json({ error: 'Invalid API key' });
+  }
+};
+
+/**
+ * Combined auth: accepts either JWT token or x-api-key header
+ * For shop-frontend public endpoints
+ */
+exports.verifyTokenOrApiKey = async (req, res, next) => {
+  try {
+    // Check for JWT token first
+    const token = req.headers.authorization?.split(' ')[1];
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = {
+          id: decoded.id,
+          email: decoded.email,
+          role: decoded.role,
+          shop_id: decoded.shop_id,
+          api_key: decoded.api_key
+        };
+        return next();
+      } catch (e) {
+        // Token invalid, continue to check API key
+      }
+    }
+
+    // Check for API key
+    const apiKey = req.headers['x-api-key'];
+    if (apiKey) {
+      const result = await db.query('SELECT * FROM shops WHERE api_key = $1', [apiKey]);
+      if (result.rows.length === 0) {
+        return res.status(401).json({ error: 'Invalid API key' });
+      }
+      req.shop = result.rows[0];
+      req.user = {
+        shop_id: result.rows[0].id,
+        role: 'shop'
+      };
+      return next();
+    }
+
+    return res.status(401).json({ error: 'Authentication required' });
+  } catch (error) {
+    return res.status(401).json({ error: 'Invalid authentication' });
   }
 };

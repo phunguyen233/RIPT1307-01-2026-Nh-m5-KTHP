@@ -2,6 +2,9 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
 import PaymentModal from "../components/paymentModal";
+import { API_KEY } from "../api/shopApiClient";
+import customersAPI from "../api/customersAPI";
+import ordersAPI from "../api/ordersAPI";
 
 const API = "https://bepmam-backend.onrender.com/api";
 
@@ -45,16 +48,7 @@ export default function Cart() {
   const handleCheckout = async () => {
     const token = localStorage.getItem("token");
     const userRaw = localStorage.getItem("user");
-    if (!token || !userRaw) {
-      // Inform user and redirect to auth page so they can login/register
-      alert('Vui lòng đăng nhập hoặc đăng ký để tiếp tục đặt hàng');
-      // include autoCheckout so after login we can continue the checkout flow
-      navigate('/auth', { state: { from: '/cart', autoCheckout: true } });
-      return;
-    }
-
-    const user = JSON.parse(userRaw);
-
+    
     // Validate checkout fields before creating order
     const fieldErrs: { name?: string; phone?: string; address?: string } = {};
     if (!checkoutName || !checkoutName.trim()) fieldErrs.name = 'Vui lòng nhập tên người nhận';
@@ -70,35 +64,92 @@ export default function Cart() {
     setCheckoutFieldErrors({});
 
     try {
-      // create or find customer linked to account (include phone if provided)
-      const custRes = await axios.post(
-        `${API}/customers`,
-        { ho_ten: user.ho_ten || user.ten_dang_nhap, ma_tai_khoan: user.id, so_dien_thoai: checkoutPhone },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const ma_khach_hang = custRes.data.ma_khach_hang;
+      let ma_khach_hang: number;
+      
+      // If API key is configured, use it for shop-frontend to admin communication
+      if (API_KEY) {
+        // Create or find customer via API key
+        try {
+          // Try to find existing customer by phone
+          const customers = await customersAPI.getAll();
+          const existingCustomer = customers.find((c: any) => c.so_dien_thoai === checkoutPhone);
+          
+          if (existingCustomer) {
+            ma_khach_hang = existingCustomer.ma_khach_hang;
+          } else {
+            // Create new customer
+            const newCustomer = await customersAPI.create({
+              name: checkoutName,
+              phone: checkoutPhone,
+              address: checkoutAddress
+            });
+            ma_khach_hang = newCustomer.ma_khach_hang;
+          }
+        } catch (customerErr) {
+          console.error("Customer error:", customerErr);
+          // Try to create customer anyway
+          const newCustomer = await customersAPI.create({
+            name: checkoutName,
+            phone: checkoutPhone,
+            address: checkoutAddress
+          });
+          ma_khach_hang = newCustomer.ma_khach_hang;
+        }
 
-      const chi_tiet = cart.map((c) => ({ ma_san_pham: c.id, so_luong: c.quantity || 1, don_gia: c.gia_ban || c.price || 0 }));
+        // Create order via API key
+        const orderItems = cart.map((c) => ({
+          product_id: c.id,
+          quantity: c.quantity || 1,
+          price: c.gia_ban || c.price || 0
+        }));
 
-      const orderRes = await axios.post(
-        `${API}/orders`,
-        {
-          ma_khach_hang,
-          trang_thai: 'cho_xu_ly',
-          tong_tien: total,
-          chi_tiet,
-          ten_nguoi_nhan: checkoutName,
-          so_dien_thoai_nhan: checkoutPhone,
-          dia_chi_nhan: checkoutAddress,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+        const orderRes = await ordersAPI.create({
+          customer_id: ma_khach_hang,
+          shipping_address: checkoutAddress,
+          total_price: total,
+          items: orderItems
+        });
 
-      // Instead of clearing cart immediately, open payment modal showing QR and account info
-      const ma_don_hang = orderRes.data.ma_don_hang;
-      setMaDonHang(ma_don_hang);
-      setShowPaymentModal(true);
-      // keep checkout modal open behind payment modal if needed
+        const ma_don_hang = orderRes.ma_don_hang;
+        setMaDonHang(ma_don_hang);
+        setShowPaymentModal(true);
+      } else if (token && userRaw) {
+        // Original flow: use JWT token for authenticated users
+        const user = JSON.parse(userRaw);
+
+        // create or find customer linked to account (include phone if provided)
+        const custRes = await axios.post(
+          `${API}/customers`,
+          { ho_ten: user.ho_ten || user.ten_dang_nhap, ma_tai_khoan: user.id, so_dien_thoai: checkoutPhone },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        ma_khach_hang = custRes.data.ma_khach_hang;
+
+        const chi_tiet = cart.map((c) => ({ ma_san_pham: c.id, so_luong: c.quantity || 1, don_gia: c.gia_ban || c.price || 0 }));
+
+        const orderRes = await axios.post(
+          `${API}/orders`,
+          {
+            ma_khach_hang,
+            trang_thai: 'cho_xu_ly',
+            tong_tien: total,
+            chi_tiet,
+            ten_nguoi_nhan: checkoutName,
+            so_dien_thoai_nhan: checkoutPhone,
+            dia_chi_nhan: checkoutAddress,
+          },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        const ma_don_hang = orderRes.data.ma_don_hang;
+        setMaDonHang(ma_don_hang);
+        setShowPaymentModal(true);
+      } else {
+        // No API key and not logged in - require login
+        alert('Vui lòng đăng nhập hoặc đăng ký để tiếp tục đặt hàng');
+        navigate('/auth', { state: { from: '/cart', autoCheckout: true } });
+        return;
+      }
     } catch (err: any) {
       console.error(err);
       alert(err?.response?.data?.message || 'Lỗi khi đặt hàng');

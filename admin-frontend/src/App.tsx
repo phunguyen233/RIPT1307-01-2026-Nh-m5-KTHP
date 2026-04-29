@@ -11,6 +11,7 @@ import Orders from "./pages/Orders";
 import Inventory from "./pages/Inventory";
 import Ingredients from "./pages/Ingredients";
 import Recipes from "./pages/Recipes";
+import ApiKey from "./pages/ApiKey";
 import Auth from "./pages/Auth";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -45,6 +46,7 @@ function InnerApp() {
                 <Route path="/recipes" element={<RequireAuth><Recipes /></RequireAuth>} />
                 <Route path="/orders" element={<RequireAuth><Orders /></RequireAuth>} />
                 <Route path="/inventory" element={<RequireAuth><Inventory /></RequireAuth>} />
+                <Route path="/api-key" element={<RequireAuth><ApiKey /></RequireAuth>} />
                 <Route path="*" element={<RequireAuth><Dashboard /></RequireAuth>} />
               </Routes>
             </Content>

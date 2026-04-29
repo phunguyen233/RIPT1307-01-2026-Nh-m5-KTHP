@@ -4,7 +4,7 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-const { verifyAdminToken, verifyToken } = require('./middleware/authMiddleware');
+const { verifyAdminToken, verifyToken, verifyApiKey, verifyTokenOrApiKey } = require('./middleware/authMiddleware');
 
 const shopsRoutes = require('./routes/shops');
 const usersRoutes = require('./routes/users');
@@ -29,13 +29,19 @@ app.get('/', (req, res) => {
   res.json({ message: 'Bếp Măm backend is running', status: 'ok' });
 });
 
-app.use('/api/shops', verifyAdminToken, shopsRoutes);
+// Public routes (accessible with x-api-key header)
+app.use('/api/shops', shopsRoutes); // get shop by api key is public
+
+// Routes accessible with either admin token or x-api-key (for shop-frontend)
+app.use('/api/products', verifyTokenOrApiKey, productsRoutes);
+app.use('/api/categories', verifyTokenOrApiKey, categoriesRoutes);
+app.use('/api/units', verifyTokenOrApiKey, unitsRoutes);
+app.use('/api/customers', verifyTokenOrApiKey, customersRoutes);
+app.use('/api/orders', verifyTokenOrApiKey, ordersRoutes);
+
+// Protected routes (need admin token)
+app.use('/api/shops/admin', verifyAdminToken, shopsRoutes);
 app.use('/api/users', usersRoutes);
-app.use('/api/customers', verifyAdminToken, customersRoutes);
-app.use('/api/units', unitsRoutes);
-app.use('/api/categories', verifyAdminToken, categoriesRoutes);
-app.use('/api/products', verifyAdminToken, productsRoutes);
-app.use('/api/orders', verifyAdminToken, ordersRoutes);
 app.use('/api/order-items', verifyAdminToken, orderItemsRoutes);
 app.use('/api/ingredients', verifyAdminToken, ingredientsRoutes);
 app.use('/api/recipes', verifyAdminToken, recipesRoutes);

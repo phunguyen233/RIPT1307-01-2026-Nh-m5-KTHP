@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { API_KEY } from "../api/shopApiClient";
+import customersAPI from "../api/customersAPI";
 
 const API = "https://bepmam-backend.onrender.com/api";
 
@@ -104,7 +106,23 @@ export default function Auth() {
       return;
     }
     try {
+      // Register user via API
       const res = await axios.post(`${API}/auth/register`, { ten_dang_nhap: regUsername, mat_khau: regPassword, ho_ten: hoTen, email, so_dien_thoai: phone });
+      
+      // If API key is configured, also create customer in admin's shop
+      if (API_KEY && phone) {
+        try {
+          await customersAPI.create({
+            name: hoTen,
+            phone: phone,
+            address: ""
+          });
+        } catch (customerErr) {
+          console.error("Failed to create customer:", customerErr);
+          // Continue even if customer creation fails
+        }
+      }
+      
       // Show success message and then switch to login tab. Do NOT auto-login.
       setRegisterSuccess("Đăng ký thành công");
       setTimeout(() => {

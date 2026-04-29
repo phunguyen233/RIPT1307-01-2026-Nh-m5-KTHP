@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { Product } from "../types/Product";
 import CartProduct from "../components/cartProduct";
 import { resolveImageUrl } from "../api/imageHelper";
-
-const API_URL = "https://bepmam-backend.onrender.com/api/products";
+import productsAPI from "../api/productsAPI";
+import { API_KEY } from "../api/shopApiClient";
 
 export default function ShopProducts() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -12,12 +11,17 @@ export default function ShopProducts() {
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const [pressedButton, setPressedButton] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    axios
-      .get(API_URL)
+    if (!API_KEY) {
+      setError("Chưa cấu hình API Key. Vui lòng thêm REACT_APP_SHOP_API_KEY vào file .env");
+      return;
+    }
+
+    productsAPI.getAll()
       .then((res) => {
-        const mapped: Product[] = res.data.map((row: any) => ({
+        const mapped: Product[] = res.map((row: any) => ({
           id: row.ma_san_pham ?? row.id,
           ten_san_pham: row.ten_san_pham ?? row.name ?? "",
           gia_ban: row.gia_ban ?? 0,
@@ -26,12 +30,11 @@ export default function ShopProducts() {
           mo_ta: row.mo_ta ?? "",
           hien_thi: (row.trang_thai ?? row.hien_thi) === "hien" || row.hien_thi === true,
         }));
-
-        // Include hidden products too; the UI will mark them as out-of-stock
         setProducts(mapped);
       })
       .catch((err) => {
         console.error("Lỗi khi lấy sản phẩm:", err);
+        setError("Không thể kết nối shop. Vui lòng kiểm tra API Key.");
       });
   }, []);
 
@@ -62,6 +65,17 @@ export default function ShopProducts() {
   const filteredProducts = products.filter((p) =>
     p.ten_san_pham?.toLowerCase().includes(query.trim().toLowerCase())
   );
+
+  if (error) {
+    return (
+      <div className="p-8 bg-gray-50 min-h-screen flex flex-col items-center justify-center">
+        <div className="text-center max-w-md">
+          <h2 className="text-2xl font-bold mb-4 text-red-600">Lỗi kết nối</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

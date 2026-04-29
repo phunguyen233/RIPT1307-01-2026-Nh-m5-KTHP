@@ -247,6 +247,56 @@ exports.verifyApiKey = async (req, res, next) => {
   }
 };
 
+// Lấy API key của shop hiện tại
+exports.getCurrentShopApiKey = async (req, res, next) => {
+  try {
+    const { user } = req;
+    
+    if (!user || !user.shop_id) {
+      return res.status(404).json({ error: 'User has no shop' });
+    }
+
+    const result = await db.query(
+      'SELECT id, name, email, api_key, created_at FROM shops WHERE id = $1',
+      [user.shop_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Shop not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Tạo lại API key mới cho shop hiện tại
+exports.regenerateApiKey = async (req, res, next) => {
+  try {
+    const { user } = req;
+    
+    if (!user || !user.shop_id) {
+      return res.status(404).json({ error: 'User has no shop' });
+    }
+
+    const newApiKey = generateApiKey();
+
+    const result = await db.query(
+      'UPDATE shops SET api_key = $1 WHERE id = $2 RETURNING id, name, email, api_key, created_at',
+      [newApiKey, user.shop_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Shop not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.getAllUsers = async (req, res, next) => {
   try {
     const result = await db.query('SELECT id, name, email, role, shop_id, created_at FROM users ORDER BY id');

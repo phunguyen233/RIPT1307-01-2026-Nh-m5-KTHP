@@ -4,6 +4,7 @@ const { uploadImage, deleteImage } = require('../utils/cloudinaryUpload');
 exports.getAllProducts = async (req, res, next) => {
   try {
     const { active, category_id, search } = req.query;
+    // Support both admin token and API key authentication
     const shop_id = req.user.shop_id;
     const filters = [];
     const values = [];
@@ -43,6 +44,7 @@ exports.getAllProducts = async (req, res, next) => {
 exports.getProductById = async (req, res, next) => {
   try {
     const { id } = req.params;
+    // Support both admin token and API key authentication
     const shop_id = req.user.shop_id;
 
     const query = `SELECT p.*, c.name AS category_name

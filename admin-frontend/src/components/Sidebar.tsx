@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, type MenuProps } from "antd";
-import { HomeOutlined, ShoppingOutlined, AppstoreOutlined, UserOutlined, ShoppingCartOutlined, InboxOutlined, BookOutlined, StarOutlined, LogoutOutlined } from "@ant-design/icons";
+import { HomeOutlined, ShoppingOutlined, AppstoreOutlined, UserOutlined, ShoppingCartOutlined, InboxOutlined, BookOutlined, StarOutlined, LogoutOutlined, KeyOutlined } from "@ant-design/icons";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function Sidebar() {
@@ -53,6 +53,11 @@ export default function Sidebar() {
       key: "/inventory",
       icon: <InboxOutlined />,
       label: <Link to="/inventory">Nhập kho</Link>,
+    },
+    {
+      key: "/api-key",
+      icon: <KeyOutlined />,
+      label: <Link to="/api-key">API Key</Link>,
     },
     {
       type: 'divider',
